@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "public": true,
+  "functions": {
+    "api/*.py": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    { "source": "/api/generate-website", "destination": "/api/generate_website.py" },
+    { "source": "/api/modify-website", "destination": "/api/modify_website.py" }
+  ]
+} 
