@@ -1,16 +1,24 @@
 // Get the appropriate backend URL based on the environment
 let BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
-// In production, use the environment variable or default to the current origin
+// In production, use the current hostname
 if (process.env.NODE_ENV === 'production') {
-  BACKEND_URL = process.env.REACT_APP_BACKEND_URL || `${window.location.origin}/api`;
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  BACKEND_URL = `${protocol}//${hostname}`;
+  
+  // When using API routes on Vercel, we need to use the /api path directly
+  // without a separate backend URL
+  if (hostname.includes('vercel.app')) {
+    BACKEND_URL = '';
+  }
 }
 
 console.log('Using backend URL:', BACKEND_URL);
 
 export async function generateWebsite(description, onUpdate) {
   try {
-    const response = await fetch(`${BACKEND_URL}/generate-website`, {
+    const response = await fetch(`${BACKEND_URL}/api/generate-website`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -104,10 +112,10 @@ export async function modifyWebsite(modificationDescription, currentHtml, curren
       currentJs: currentJs?.trim() || ''
     };
 
-    console.log('Sending modification request to:', `${BACKEND_URL}/modify-website`);
+    console.log('Sending modification request to:', `${BACKEND_URL}/api/modify-website`);
     console.log('Request payload:', payload);
 
-    const response = await fetch(`${BACKEND_URL}/modify-website`, {
+    const response = await fetch(`${BACKEND_URL}/api/modify-website`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

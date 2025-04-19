@@ -216,8 +216,10 @@ const StreamingLivePreview = ({ htmlCode, cssCode, jsCode, isLoading }) => {
     iframe.addEventListener('blur', handleBlur);
 
     return () => {
-      iframe.removeEventListener('focus', handleFocus);
-      iframe.removeEventListener('blur', handleBlur);
+      if (iframe) {
+        iframe.removeEventListener('focus', handleFocus);
+        iframe.removeEventListener('blur', handleBlur);
+      }
     };
   }, []);
 

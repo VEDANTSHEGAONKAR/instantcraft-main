@@ -1,0 +1,16 @@
+# Vercel Environment Variables Setup
+# These are the environment variables you need to set in your Vercel project settings
+
+# Required: Your Google Gemini API key for the AI model
+GOOGLE_API_KEY=your_api_key_here
+
+# Optional: If you have a custom domain, you can specify it here
+# VERCEL_URL=yourdomain.com
+
+# Note: Do not include secrets in committed files. This file is just for reference.
+# To set environment variables in Vercel:
+# 1. Go to your Vercel project dashboard
+# 2. Click on "Settings"
+# 3. Go to the "Environment Variables" section
+# 4. Add each variable and its value
+# 5. Deploy your project again to apply the changes 

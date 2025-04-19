@@ -1,91 +1,117 @@
-from flask import Flask, request, jsonify, Response
-from flask_cors import CORS
+from http.server import BaseHTTPRequestHandler
+from flask import Response
 import os
-import google.generativeai as genai
-from dotenv import load_dotenv
 import json
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
 import traceback
 
 load_dotenv()
 
-app = Flask(__name__)
-CORS(app)
-
-# Initialize Gemini client with error handling
+# Initialize Gemini client
 try:
     api_key = os.getenv('GOOGLE_API_KEY')
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in environment variables")
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    client = genai.Client(api_key=api_key)
 except Exception as e:
     print(f"Error initializing Gemini client: {str(e)}")
     traceback.print_exc()
 
-def stream_response(response):
+def handle_request(request_body):
     try:
-        for chunk in response:
-            if hasattr(chunk, 'text'):
-                yield f"data: {json.dumps({'text': chunk.text})}\n\n"
-    except Exception as e:
-        print(f"Error in stream_response: {str(e)}")
-        traceback.print_exc()
-        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        if not request_body:
+            return {'error': 'No JSON data received'}, 400
 
-@app.route('/api/generate-website', methods=['POST'])
-def generate_website():
-    try:
-        data = request.json
-        if not data:
-            return jsonify({'error': 'No JSON data received'}), 400
-
-        description = data.get('description')
+        description = request_body.get('description')
         if not description:
-            return jsonify({'error': 'No description provided'}), 400
+            return {'error': 'No description provided'}, 400
 
-        # Prompt engineering for website generation
+        # Direct, simplified prompt focused on professional websites with real images
         prompt = f"""
-        Create a website based on this description: {description}
-        Return only the HTML, CSS, and JavaScript code without any explanations.
-        Format the response exactly as:
+        Create a professional website based on this description: {description}
+        
+        MOST IMPORTANT:
+        1. The website MUST use REAL IMAGES that directly relate to the description
+        2. Each image must use a DIFFERENT keyword from the description
+        3. Use valid, working image URLs from Unsplash for ALL images
+        
+        For ANY image in the website, use this EXACT format:
+        <img src="https://source.unsplash.com/random/800x600/?[keyword]" alt="[description]">
+        
+        Replace [keyword] with words FROM THE DESCRIPTION such as:
+        - For portfolio: portfolio, design, work, project, creative, etc.
+        - For shop: product, store, item, clothing, electronics, etc.
+        - For business: office, business, professional, corporate, etc.
+        
+        DO NOT use placeholder text or broken image URLs.
+        Make each image URL UNIQUE and SPECIFIC to the content it represents.
+        
+        The website must:
+        - Be professionally designed and responsive
+        - Include appropriate animations/transitions
+        - Follow modern web design principles
+        - Have complete, working HTML/CSS/JS
+        
+        Return only code in this format:
         ```html
-        [HTML code here]
+        [FULL HTML]
         ```
         ```css
-        [CSS code here]
+        [FULL CSS]
         ```
         ```javascript
-        [JavaScript code here]
+        [FULL JS]
         ```
-        Make sure the code is complete, functional, and properly handles user interactions.
-        The JavaScript code should be properly scoped and not interfere with the parent window.
         """
 
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                top_p=0.8,
+        response = client.models.generate_content(
+            model='gemini-1.5-pro',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.6,
+                top_p=0.95,
                 top_k=40,
-                max_output_tokens=2048,
-            ),
-            stream=True
+                max_output_tokens=8192,
+            )
         )
 
-        return Response(
-            stream_response(response),
-            mimetype='text/event-stream'
-        )
+        return {'result': response.text}, 200
 
     except Exception as e:
-        print(f"Error in generate_website: {str(e)}")
-        traceback.print_exc()
-        return jsonify({
+        return {
             'error': str(e),
             'traceback': traceback.format_exc()
-        }), 500
+        }, 500
 
-# Vercel serverless function handler
-def handler(event, context):
-    return app(event, context)
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        try:
+            content_length = int(self.headers['Content-Length'])
+            request_body = self.rfile.read(content_length)
+            data = json.loads(request_body)
+
+            response_data, status_code = handle_request(data)
+
+            self.send_response(status_code)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'POST')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+            self.end_headers()
+
+            self.wfile.write(json.dumps(response_data).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()

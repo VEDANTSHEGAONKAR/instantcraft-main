@@ -1,55 +1,57 @@
-from flask import Flask, request, jsonify, Response
-from flask_cors import CORS
+from http.server import BaseHTTPRequestHandler
 import os
-import google.generativeai as genai
-from dotenv import load_dotenv
 import json
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
 import traceback
 
 load_dotenv()
 
-app = Flask(__name__)
-CORS(app)
-
-# Initialize Gemini client with error handling
+# Initialize Gemini client
 try:
     api_key = os.getenv('GOOGLE_API_KEY')
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in environment variables")
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    client = genai.Client(api_key=api_key)
 except Exception as e:
     print(f"Error initializing Gemini client: {str(e)}")
     traceback.print_exc()
 
-def stream_response(response):
+def handle_request(request_body):
     try:
-        for chunk in response:
-            if hasattr(chunk, 'text'):
-                yield f"data: {json.dumps({'text': chunk.text})}\n\n"
-    except Exception as e:
-        print(f"Error in stream_response: {str(e)}")
-        traceback.print_exc()
-        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        if not request_body:
+            return {'error': 'No JSON data received'}, 400
 
-@app.route('/api/modify-website', methods=['POST'])
-def modify_website():
-    try:
-        data = request.json
-        if not data:
-            return jsonify({'error': 'No JSON data received'}), 400
-
-        modification = data.get('modificationDescription')
-        current_html = data.get('currentHtml')
-        current_css = data.get('currentCss')
-        current_js = data.get('currentJs', '')  # Optional JavaScript code
+        modification = request_body.get('modificationDescription')
+        current_html = request_body.get('currentHtml')
+        current_css = request_body.get('currentCss')
+        current_js = request_body.get('currentJs', '')
 
         if not all([modification, current_html, current_css]):
-            return jsonify({'error': 'Missing required fields'}), 400
+            return {'error': 'Missing required fields'}, 400
 
         prompt = f"""
         Modify this website according to this description: {modification}
+        
+        MOST IMPORTANT:
+        1. For ANY new or changed images, use REAL IMAGES that directly relate to the modification
+        2. Each new image must use a DIFFERENT keyword from the modification description
+        3. Use valid, working image URLs from Unsplash for ALL images
+        
+        For ANY image you add or change, use this EXACT format:
+        <img src="https://source.unsplash.com/random/800x600/?[keyword]" alt="[description]">
+        
+        Replace [keyword] with SPECIFIC words from the modification description.
+        DO NOT use placeholder text or broken image URLs.
+        Make each image URL UNIQUE and SPECIFIC to the content it represents.
+        
+        When modifying the website:
+        - Keep existing structure where appropriate
+        - Add requested animations and effects 
+        - Maintain responsive design
+        - Ensure all code remains functional
 
         Current HTML:
         ```html
@@ -66,45 +68,63 @@ def modify_website():
         {current_js}
         ```
 
-        Return only the modified HTML, CSS, and JavaScript code without any explanations.
-        Format the response exactly as:
+        Return only the modified code in this format:
         ```html
-        [Modified HTML code here]
+        [FULL MODIFIED HTML]
         ```
         ```css
-        [Modified CSS code here]
+        [FULL MODIFIED CSS]
         ```
         ```javascript
-        [Modified JavaScript code here]
+        [FULL MODIFIED JS]
         ```
-        Make sure the code is complete, functional, and properly handles user interactions.
-        The JavaScript code should be properly scoped and not interfere with the parent window.
         """
 
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                top_p=0.8,
+        response = client.models.generate_content(
+            model='gemini-1.5-pro',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.6,
+                top_p=0.95,
                 top_k=40,
-                max_output_tokens=2048,
-            ),
-            stream=True
+                max_output_tokens=8192,
+            )
         )
 
-        return Response(
-            stream_response(response),
-            mimetype='text/event-stream'
-        )
+        return {'result': response.text}, 200
 
     except Exception as e:
-        print(f"Error in modify_website: {str(e)}")
-        traceback.print_exc()
-        return jsonify({
+        return {
             'error': str(e),
             'traceback': traceback.format_exc()
-        }), 500
+        }, 500
 
-# Vercel serverless function handler
-def handler(event, context):
-    return app(event, context)
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        try:
+            content_length = int(self.headers['Content-Length'])
+            request_body = self.rfile.read(content_length)
+            data = json.loads(request_body)
+
+            response_data, status_code = handle_request(data)
+
+            self.send_response(status_code)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'POST')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+            self.end_headers()
+
+            self.wfile.write(json.dumps(response_data).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()

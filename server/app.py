@@ -25,7 +25,8 @@ try:
         raise ValueError("GOOGLE_API_KEY not found in environment variables")
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Use a higher capability model
+    model = genai.GenerativeModel('gemini-1.5-pro')
 except Exception as e:
     print(f"Error initializing Gemini client: {str(e)}")
     traceback.print_exc()
@@ -53,33 +54,54 @@ def generate_website():
 
         print(f"Received description: {description}")  # Debug log
 
-        # Prompt engineering for website generation
+        # Direct, simplified prompt focused on professional websites with real images
         prompt = f"""
-        Create a website based on this description: {description}
-        Return only the HTML, CSS, and JavaScript code without any explanations.
-        Format the response exactly as:
+        Create a professional website based on this description: {description}
+        
+        MOST IMPORTANT:
+        1. The website MUST use REAL IMAGES that directly relate to the description
+        2. Each image must use a DIFFERENT keyword from the description
+        3. Use valid, working image URLs from Unsplash for ALL images
+        
+        For ANY image in the website, use this EXACT format:
+        <img src="https://source.unsplash.com/random/800x600/?[keyword]" alt="[description]">
+        
+        Replace [keyword] with words FROM THE DESCRIPTION such as:
+        - For portfolio: portfolio, design, work, project, creative, etc.
+        - For shop: product, store, item, clothing, electronics, etc.
+        - For business: office, business, professional, corporate, etc.
+        
+        DO NOT use placeholder text or broken image URLs.
+        Make each image URL UNIQUE and SPECIFIC to the content it represents.
+        
+        The website must:
+        - Be professionally designed and responsive
+        - Include appropriate animations/transitions
+        - Follow modern web design principles
+        - Have complete, working HTML/CSS/JS
+        
+        Return only code in this format:
         ```html
-        [HTML code here]
+        [FULL HTML]
         ```
         ```css
-        [CSS code here]
+        [FULL CSS]
         ```
         ```javascript
-        [JavaScript code here]
+        [FULL JS]
         ```
-        Make sure the code is complete, functional, and properly handles user interactions.
-        The JavaScript code should be properly scoped and not interfere with the parent window.
         """
 
         print("Sending request to Gemini...")  # Debug log
 
+        # Adjust parameters to ensure better completion
         response = model.generate_content(
             prompt,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                top_p=0.8,
+                temperature=0.6,  # Lower temperature for more deterministic results
+                top_p=0.95,
                 top_k=40,
-                max_output_tokens=2048,
+                max_output_tokens=8192,  # Increased token limit for complete response
             ),
             stream=True
         )
@@ -116,7 +138,25 @@ def modify_website():
 
         prompt = f"""
         Modify this website according to this description: {modification}
-
+        
+        MOST IMPORTANT:
+        1. For ANY new or changed images, use REAL IMAGES that directly relate to the modification
+        2. Each new image must use a DIFFERENT keyword from the modification description
+        3. Use valid, working image URLs from Unsplash for ALL images
+        
+        For ANY image you add or change, use this EXACT format:
+        <img src="https://source.unsplash.com/random/800x600/?[keyword]" alt="[description]">
+        
+        Replace [keyword] with SPECIFIC words from the modification description.
+        DO NOT use placeholder text or broken image URLs.
+        Make each image URL UNIQUE and SPECIFIC to the content it represents.
+        
+        When modifying the website:
+        - Keep existing structure where appropriate
+        - Add requested animations and effects 
+        - Maintain responsive design
+        - Ensure all code remains functional
+        
         Current HTML:
         ```html
         {current_html}
@@ -132,28 +172,26 @@ def modify_website():
         {current_js}
         ```
 
-        Return only the modified HTML, CSS, and JavaScript code without any explanations.
-        Format the response exactly as:
+        Return only the modified code in this format:
         ```html
-        [Modified HTML code here]
+        [FULL MODIFIED HTML]
         ```
         ```css
-        [Modified CSS code here]
+        [FULL MODIFIED CSS]
         ```
         ```javascript
-        [Modified JavaScript code here]
+        [FULL MODIFIED JS]
         ```
-        Make sure the code is complete, functional, and properly handles user interactions.
-        The JavaScript code should be properly scoped and not interfere with the parent window.
         """
 
+        # Adjust parameters to ensure better completion
         response = model.generate_content(
             prompt,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                top_p=0.8,
+                temperature=0.6,  # Lower temperature for more deterministic results
+                top_p=0.95,
                 top_k=40,
-                max_output_tokens=2048,
+                max_output_tokens=8192,  # Increased token limit for complete response
             ),
             stream=True
         )
