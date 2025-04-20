@@ -29,50 +29,38 @@ def handle_request(request_body):
         if not description:
             return {'error': 'No description provided'}, 400
 
-        # Direct, simplified prompt focused on professional websites with real images
         prompt = f"""
-        Create a professional website based on this description: {description}
+        Create a visually appealing, professional website based on this description: {description}
         
-        MOST IMPORTANT:
-        1. The website MUST use REAL IMAGES that directly relate to the description
-        2. Each image must use a DIFFERENT keyword from the description
-        3. Use valid, working image URLs from Unsplash for ALL images
+        Important requirements:
+        1. Include a gradient animated background that smoothly transitions between colors
+        2. Use modern CSS features including animations, transitions, and flexbox/grid layouts
+        3. Make the design visually striking with proper spacing, typography, and color harmony
+        4. Include placeholder images with proper styling (use lorem picsum or unsplash source URLs)
+        5. Ensure the website is fully responsive and mobile-friendly
+        6. Add subtle animations for UI elements (buttons, links, sections) to enhance user experience
         
-        For ANY image in the website, use this EXACT format:
-        <img src="https://source.unsplash.com/random/800x600/?[keyword]" alt="[description]">
-        
-        Replace [keyword] with words FROM THE DESCRIPTION such as:
-        - For portfolio: portfolio, design, work, project, creative, etc.
-        - For shop: product, store, item, clothing, electronics, etc.
-        - For business: office, business, professional, corporate, etc.
-        
-        DO NOT use placeholder text or broken image URLs.
-        Make each image URL UNIQUE and SPECIFIC to the content it represents.
-        
-        The website must:
-        - Be professionally designed and responsive
-        - Include appropriate animations/transitions
-        - Follow modern web design principles
-        - Have complete, working HTML/CSS/JS
-        
-        Return only code in this format:
+        Return only the HTML, CSS, and JavaScript code without any explanations.
+        Format the response exactly as:
         ```html
-        [FULL HTML]
+        [HTML code here]
         ```
         ```css
-        [FULL CSS]
+        [CSS code here]
         ```
         ```javascript
-        [FULL JS]
+        [JavaScript code here]
         ```
+        Make sure the code is complete, functional, and properly handles user interactions.
+        The JavaScript code should be properly scoped and not interfere with the parent window.
         """
 
         response = client.models.generate_content(
-            model='gemini-1.5-pro',
+            model='gemini-2.5-flash-preview-04-17',
             contents=prompt,
             config=types.GenerateContentConfig(
-                temperature=0.6,
-                top_p=0.95,
+                temperature=0.8,
+                top_p=0.9,
                 top_k=40,
                 max_output_tokens=8192,
             )

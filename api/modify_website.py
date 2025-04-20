@@ -34,24 +34,14 @@ def handle_request(request_body):
 
         prompt = f"""
         Modify this website according to this description: {modification}
-        
-        MOST IMPORTANT:
-        1. For ANY new or changed images, use REAL IMAGES that directly relate to the modification
-        2. Each new image must use a DIFFERENT keyword from the modification description
-        3. Use valid, working image URLs from Unsplash for ALL images
-        
-        For ANY image you add or change, use this EXACT format:
-        <img src="https://source.unsplash.com/random/800x600/?[keyword]" alt="[description]">
-        
-        Replace [keyword] with SPECIFIC words from the modification description.
-        DO NOT use placeholder text or broken image URLs.
-        Make each image URL UNIQUE and SPECIFIC to the content it represents.
-        
-        When modifying the website:
-        - Keep existing structure where appropriate
-        - Add requested animations and effects 
-        - Maintain responsive design
-        - Ensure all code remains functional
+
+        Important:
+        1. Maintain or enhance any existing animations and visual effects
+        2. Ensure all gradient animations and visual styling remain intact
+        3. Keep the design modern, responsive and visually appealing
+        4. If adding new elements, match the existing style and add appropriate animations
+        5. Use high-quality placeholder images where needed (lorem picsum or unsplash URLs)
+        6. Ensure all interactive elements have proper hover/focus states
 
         Current HTML:
         ```html
@@ -68,24 +58,27 @@ def handle_request(request_body):
         {current_js}
         ```
 
-        Return only the modified code in this format:
+        Return only the modified HTML, CSS, and JavaScript code without any explanations.
+        Format the response exactly as:
         ```html
-        [FULL MODIFIED HTML]
+        [Modified HTML code here]
         ```
         ```css
-        [FULL MODIFIED CSS]
+        [Modified CSS code here]
         ```
         ```javascript
-        [FULL MODIFIED JS]
+        [Modified JavaScript code here]
         ```
+        Make sure the code is complete, functional, and properly handles user interactions.
+        The JavaScript code should be properly scoped and not interfere with the parent window.
         """
 
         response = client.models.generate_content(
-            model='gemini-1.5-pro',
+            model='gemini-2.5-flash-preview-04-17',
             contents=prompt,
             config=types.GenerateContentConfig(
-                temperature=0.6,
-                top_p=0.95,
+                temperature=0.8,
+                top_p=0.9,
                 top_k=40,
                 max_output_tokens=8192,
             )

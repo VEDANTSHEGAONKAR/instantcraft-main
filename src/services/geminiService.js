@@ -6,12 +6,6 @@ if (process.env.NODE_ENV === 'production') {
   const protocol = window.location.protocol;
   const hostname = window.location.hostname;
   BACKEND_URL = `${protocol}//${hostname}`;
-  
-  // When using API routes on Vercel, we need to use the /api path directly
-  // without a separate backend URL
-  if (hostname.includes('vercel.app')) {
-    BACKEND_URL = '';
-  }
 }
 
 console.log('Using backend URL:', BACKEND_URL);
